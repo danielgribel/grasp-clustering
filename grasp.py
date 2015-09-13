@@ -13,6 +13,7 @@ import time
 from numpy.linalg import norm
 from scipy.spatial import distance
 from heapq import nlargest, nsmallest
+from collections import Counter
 
 # reading input data
 def load_data(inputdata):
@@ -135,7 +136,7 @@ def local_search(solution, G_full, M):
 	N = G_full.__len__()
 
 	it = 0
-	while it < 10:
+	while it < 5:
 		for i in range(0, N):
 			sum_i = numpy.zeros(M)
 			min_sum = 999999
@@ -155,16 +156,16 @@ def local_search(solution, G_full, M):
 			solution[i] = c
 		
 		it = it+1
-		print solution_cost(solution, G_full)	
+		print 'f(x%d) = %f' % (it, solution_cost(solution, G_full))
 	
-	print solution
+	return solution
 
 def demo():
 	mydata = load_data('iris.csv')
 
 	N = len(mydata) # number of instances
 	M = 3 # number of clusters
-		
+
 	# removing last field: label/classification
 	mydata_att = numpy.delete(mydata, 4, 1)
 
@@ -185,10 +186,51 @@ def demo():
 			weights.append(w)
 
 	initial_solution = constructive_phase(weights, G, N, M)
-	print solution_cost(initial_solution, G_full)
-	local_search(initial_solution, G_full, M)
+	print 'f(x%d) = %f' % (0, solution_cost(initial_solution, G_full))
+	solution = local_search(initial_solution, G_full, M)
+
+	eval_solution(initial_solution, mydata[:,4], N)
 
 	print 'time:', time.time() - start
+
+def eval_solution(solution, results, N):
+	a = 0
+	b = 0
+	c = 0
+	
+	# count the number of pairs that are in the same cluster under C and in the same class under C'
+	for i in range(0, N):
+		for j in range(i+1, N):
+			if solution[i] == solution[j] and results[i] == results[j]:
+				a = a + 1
+
+	counter_solution = Counter(solution)
+	counter_results = Counter(results)
+
+	# clusters
+	for k1 in counter_solution:
+		b = b + (counter_solution[k1])*(counter_solution[k1] - 1)/2
+
+	# classes
+	for k2 in counter_results:
+		c = c + (counter_results[k2])*(counter_results[k2] - 1)/2
+
+	b = b - a
+	c = c - a
+	d = N*(N-1)/2 - a - b - c
+
+	print 'rand:', rand(a, b, c, d)
+	print 'crand:', crand(a, b, c, d)
+
+def rand(a, b, c, d):
+	total = a+b+c+d
+	rand = 1.0*(a+d)/total
+	return rand
+
+def crand(a, b, c, d):
+	total = a+b+c+d
+	crand = (a - (1.0*(b+a)*(c+a))/total)/((1.0*(b+a+c+a))/2 - (1.0*(b+a)*(c+a))/total)
+	return crand
 
 if __name__ == "__main__":
 	start = time.time()
