@@ -108,8 +108,56 @@ def constructive_phase(weights, G, N, M):
 		#		else:
 		#			weights.append(G[v1][v2]['weight'])
 
-	print list(nx.find_cliques(G))
-	draw_graph(G)
+	initial_solution = numpy.zeros(N)
+	clusters = list(nx.find_cliques(G))
+
+	for i1 in range(0, len(clusters)):
+		for j1 in range(0, len(clusters[i1])):
+			initial_solution[clusters[i1][j1]] = i1
+	
+	#draw_graph(G)
+	return initial_solution
+
+def solution_cost(solution, G_full):
+	cost = 0
+	N = G_full.__len__()
+	for i in range(0, N-1):
+		for j in range(i+1, N):
+			if solution[i] == solution[j]:
+				y = 1
+			else:
+				y = 0
+			cost = cost + G_full[i][j]['weight']*y
+
+	return cost
+
+def local_search(solution, G_full, M):
+	N = G_full.__len__()
+
+	it = 0
+	while it < 10:
+		for i in range(0, N):
+			sum_i = numpy.zeros(M)
+			min_sum = 999999
+			c = 0
+			for k in range(0, M):
+				for j in range(0, N):
+					if i != j:
+						if solution[j] == k:
+							x = 1
+						else:
+							x = 0
+						sum_i[k] = sum_i[k] + G_full[i][j]['weight']*x
+				if sum_i[k] < min_sum:
+					min_sum = sum_i[k]
+					c = k
+
+			solution[i] = c
+		
+		it = it+1
+		print solution_cost(solution, G_full)	
+	
+	print solution
 
 def demo():
 	mydata = load_data('iris.csv')
@@ -125,16 +173,22 @@ def demo():
 
 	# initializing distance matrix/graph
 	G = nx.Graph()
+	G_full= nx.Graph()
 	weights = list()
-		
+	
 	# calculating distance matrix: euclidean distance
 	for i in range(0, N):
 		for j in range(i+1, N):
 			w = distance.euclidean(mydata_att[i], mydata_att[j])
 			G.add_edge(i, j, weight = w)
+			G_full.add_edge(i, j, weight = w)
 			weights.append(w)
-			
-	constructive_phase(weights, G, N, M)
+
+	initial_solution = constructive_phase(weights, G, N, M)
+	print solution_cost(initial_solution, G_full)
+	local_search(initial_solution, G_full, M)
+
+	print 'time:', time.time() - start
 
 if __name__ == "__main__":
 	start = time.time()
